@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Women Safety Analytics - Police Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    #login-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-card h2 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .login-card p {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 600;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .error-message {
+      color: #dc3545;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
+
+    #dashboard {
+      display: none;
+      padding: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .dashboard-header {
+      background: white;
+      padding: 20px 30px;
+      border-radius: 15px;
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .dashboard-header h1 {
+      color: #333;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      background: #4caf50;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-indicator.disconnected {
+      background: #dc3545;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .header-info {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .stat-badge {
+      padding: 8px 16px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .logout-btn {
+      padding: 10px 20px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .stat-card h3 {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-card .number {
+      font-size: 36px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-card.critical .number { color: #dc3545; }
+    .stat-card.high .number { color: #ff9800; }
+    .stat-card.medium .number { color: #ffc107; }
+    .stat-card.safe .number { color: #4caf50; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-bottom: 25px;
+    }
+
+    @media (max-width: 1200px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .panel h2 {
+      color: #333;
+      font-size: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #map {
+      height: 400px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .alerts-container {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .alert-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border-left: 5px solid #dc3545;
+      transition: all 0.3s;
+      animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .alert-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateX(5px);
+    }
+
+    .alert-item.critical { border-left-color: #dc3545; background: #fff5f5; }
+    .alert-item.high { border-left-color: #ff9800; background: #fff8f0; }
+    .alert-item.medium { border-left-color: #ffc107; background: #fffbf0; }
+    .alert-item.low { border-left-color: #4caf50; background: #f0fff4; }
+
+    .alert-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .severity-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .severity-badge.critical { background: #dc3545; color: white; }
+    .severity-badge.high { background: #ff9800; color: white; }
+    .severity-badge.medium { background: #ffc107; color: #333; }
+    .severity-badge.low { background: #4caf50; color: white; }
+
+    .alert-time {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .alert-details {
+      margin-top: 10px;
+    }
+
+    .alert-details p {
+      margin: 5px 0;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .alert-details strong {
+      color: #333;
+    }
+
+    .alert-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .btn-respond {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-dismiss {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-small:hover {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+
+    .no-alerts {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .connection-status {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .connection-status.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .connection-status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .sound-toggle {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .sound-toggle.muted {
+      background: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-section">
+    <div class="login-card">
+      <h2>🚨 Police Dashboard</h2>
+      <p>Women Safety Analytics System</p>
+      <div class="input-group">
+        <label>Police ID</label>
+        <input id="userid" type="text" placeholder="Enter your ID" value="police">
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="Enter password" value="1234">
+      </div>
+      <button class="login-btn" onclick="login()">Login to Dashboard</button>
+      <div class="error-message" id="error-message">Invalid credentials!</div>
+    </div>
+  </div>
+
+  <div id="dashboard">
+    <div class="dashboard-header">
+      <h1>
+        <span class="status-indicator" id="status-indicator"></span>
+        Women Safety Monitor - Live
+      </h1>
+      <div class="header-info">
+        <div class="connection-status connected" id="connection-status">
+          🟢 Connected
+        </div>
+        <button class="sound-toggle" id="sound-toggle" onclick="toggleSound()">
+          🔊 Sound ON
+        </button>
+        <div class="stat-badge">Officer: <strong id="officer-name">John Doe</strong></div>
+        <div class="stat-badge" id="current-time"></div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card critical">
+        <h3>Critical Alerts</h3>
+        <div class="number" id="critical-count">0</div>
+        <p style="color: #dc3545; font-size: 12px;">Requires immediate action</p>
+      </div>
+      <div class="stat-card high">
+        <h3>High Priority</h3>
+        <div class="number" id="high-count">0</div>
+        <p style="color: #ff9800; font-size: 12px;">Urgent attention needed</p>
+      </div>
+      <div class="stat-card medium">
+        <h3>Medium Risk</h3>
+        <div class="number" id="medium-count">0</div>
+        <p style="color: #ffc107; font-size: 12px;">Monitor closely</p>
+      </div>
+      <div class="stat-card safe">
+        <h3>Total Monitored</h3>
+        <div class="number" id="total-count">0</div>
+        <p style="color: #4caf50; font-size: 12px;">All areas covered</p>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="panel">
+        <h2>📍 Live Location Map</h2>
+        <div id="map"></div>
+      </div>
+
+      <div class="panel">
+        <h2>🔔 Real-time Alerts</h2>
+        <div class="alerts-container" id="alerts">
+          <div class="no-alerts">Waiting for alerts...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    let map, socket;
+    let allAlerts = [];
+    let markers = [];
+    let soundEnabled = true;
+
+    // Login function
+    function login() {
+      const user = document.getElementById('userid').value;
+      const pass = document.getElementById('password').value;
+      const errorMsg = document.getElementById('error-message');
+
+      console.log('Login attempt:', user, pass); // Debug
+
+      if (user === "police" && pass === "1234") {
+        console.log('Login successful!'); // Debug
+        errorMsg.style.display = "none";
+        document.getElementById('login-section').style.display = "none";
+        document.getElementById('dashboard').style.display = "block";
+        initDashboard();
+      } else {
+        console.log('Login failed!'); // Debug
+        errorMsg.style.display = "block";
+      }
+    }
+
+    // Allow Enter key to login
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('password').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          login();
+        }
+      });
+    });
+
+    function logout() {
+      document.getElementById('login-section').style.display = "flex";
+      document.getElementById('dashboard').style.display = "none";
+      if (socket) socket.disconnect();
+    }
+
+    function initDashboard() {
+      console.log('Initializing dashboard...'); // Debug
+      updateTime();
+      setInterval(updateTime, 1000);
+      initMap();
+      initSocket();
+    }
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('current-time').textContent = now.toLocaleTimeString();
+    }
+
+    function initMap() {
+      console.log('Initializing map...'); // Debug
+      map = L.map('map').setView([11.1085, 77.3411], 13);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+    }
+
+    function initSocket() {
+      console.log('Connecting to socket...'); // Debug
+      socket = io("http://localhost:3000");
+
+      socket.on("connect", () => {
+        console.log("✅ Connected to backend!");
+        updateConnectionStatus(true);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("❌ Disconnected from backend!");
+        updateConnectionStatus(false);
+      });
+
+      socket.on("all_alerts", (alerts) => {
+        console.log("Received all alerts:", alerts.length);
+        allAlerts = alerts;
+        updateDashboard();
+      });
+
+      socket.on("new_alert", (alert) => {
+        console.log("New alert received:", alert);
+        allAlerts.unshift(alert);
+        updateDashboard();
+        showNotification(alert);
+        playAlertSound();
+      });
+    }
+
+    function updateConnectionStatus(connected) {
+      const statusDiv = document.getElementById('connection-status');
+      const indicator = document.getElementById('status-indicator');
+      
+      if (connected) {
+        statusDiv.className = 'connection-status connected';
+        statusDiv.textContent = '🟢 Connected';
+        indicator.classList.remove('disconnected');
+      } else {
+        statusDiv.className = 'connection-status disconnected';
+        statusDiv.textContent = '🔴 Disconnected';
+        indicator.classList.add('disconnected');
+      }
+    }
+
+    function updateDashboard() {
+      updateStats();
+      displayAlerts();
+      updateMap();
+    }
+
+    function updateStats() {
+      const stats = {
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0
+      };
+
+      allAlerts.forEach(alert => {
+        const severity = alert.severity.toLowerCase();
+        if (stats[severity] !== undefined) stats[severity]++;
+      });
+
+      document.getElementById('critical-count').textContent = stats.critical;
+      document.getElementById('high-count').textContent = stats.high;
+      document.getElementById('medium-count').textContent = stats.medium;
+      document.getElementById('total-count').textContent = allAlerts.length;
+    }
+
+    function displayAlerts() {
+      const alertsDiv = document.getElementById('alerts');
+      
+      if (allAlerts.length === 0) {
+        alertsDiv.innerHTML = '<div class="no-alerts">No active alerts</div>';
+        return;
+      }
+
+      alertsDiv.innerHTML = '';
+      allAlerts.slice(0, 5).forEach(alert => {
+        const alertItem = document.createElement('div');
+        alertItem.className = `alert-item ${alert.severity.toLowerCase()}`;
+        
+        const timeStr = new Date(alert.time).toLocaleTimeString();
+        
+        alertItem.innerHTML = `
+          <div class="alert-header">
+            <span class="severity-badge ${alert.severity.toLowerCase()}">${alert.severity}</span>
+            <span class="alert-time">${timeStr}</span>
+          </div>
+          <div class="alert-details">
+            <p><strong>📍 Location:</strong> ${alert.place}</p>
+            <p><strong>⚠️ Type:</strong> ${alert.type}</p>
+            <p><strong>🎥 Camera:</strong> ${alert.cameraId}</p>
+            <p><strong>ℹ️ Details:</strong> ${alert.description}</p>
+          </div>
+          <div class="alert-actions">
+            <button class="btn-small btn-respond" onclick="respondToAlert('${alert.place}')">
+              Dispatch Unit
+            </button>
+            <button class="btn-small btn-dismiss" onclick="dismissAlert('${alert.place}')">
+              Mark Resolved
+            </button>
+          </div>
+        `;
+        
+        alertsDiv.appendChild(alertItem);
+      });
+    }
+
+    function updateMap() {
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+
+      allAlerts.forEach(alert => {
+        if (alert.lat && alert.lng) {
+          const color = getSeverityColor(alert.severity);
+          
+          const marker = L.circleMarker([alert.lat, alert.lng], {
+            radius: 8,
+            fillColor: color,
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+          }).addTo(map);
+
+          marker.bindPopup(`
+            <strong>${alert.severity}</strong><br>
+            ${alert.place}<br>
+            ${alert.type}
+          `);
+
+          markers.push(marker);
+        }
+      });
+    }
+
+    function getSeverityColor(severity) {
+      const colors = {
+        'CRITICAL': '#dc3545',
+        'HIGH': '#ff9800',
+        'MEDIUM': '#ffc107',
+        'LOW': '#4caf50'
+      };
+      return colors[severity] || '#999';
+    }
+
+    function showNotification(alert) {
+      if (Notification.permission === "granted") {
+        new Notification("🚨 New Alert", {
+          body: `${alert.severity} - ${alert.place}`,
+          requireInteraction: true
+        });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    }
+
+    function playAlertSound() {
+      if (soundEnabled) {
+        const audio = new Audio('data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+        audio.play().catch(e => console.log('Audio play failed:', e));
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('sound-toggle');
+      if (soundEnabled) {
+        btn.textContent = '🔊 Sound ON';
+        btn.classList.remove('muted');
+      } else {
+        btn.textContent = '🔇 Sound OFF';
+        btn.classList.add('muted');
+      }
+    }
+
+    function respondToAlert(location) {
+      alert(`🚓 Dispatching patrol unit to: ${location}`);
+    }
+
+    function dismissAlert(location) {
+      allAlerts = allAlerts.filter(a => a.place !== location);
+      updateDashboard();
+    }
+
+    // Request notification permission on load
+    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+  </script>
+</body>
+</html>
